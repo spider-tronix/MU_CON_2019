@@ -1,2 +1,14 @@
-maximum limit 1200
-
+REQUIRED COMPONENTS:
+	1)Arduino nano
+	2)servo
+	3)HC-05
+	4)wire cutter
+	5)LM-7805
+	6)9v battery
+	7)nano serial communication cable
+	8)laser cutting
+	9)nut and bolt
+	10)single strand wires
+	11)6 male female jumpers
+	12)bread board/PCB
+	
