@@ -5,125 +5,103 @@
  */
 
 //REQUIRED HEADERS
-#include<avr/interrupt.h>
-#include<avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/io.h>
 
-//for async USART
-volatile char USART_DATA_BUFFER[32] = "";
-volatile uint8_t USART_DATA_INDEX = 0;
-volatile bool USART_BUFFER_READY = false;
+////////////////
+// UART class //
+////////////////
 
-//////////////////
-// UART methods //
-//////////////////
-/*
-    Function name: initUSART
-    Input: none
-    Output: none
-    Logic: Initialize serial communication
-    Example call: initUSART();
-*/
-void initUSART() {
-    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01); //asynchronous, 8 bit data
-    UBRR0 = 103; //set baud rate = 9600 bps
-    UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); //enable RX and TX
-}
+class USART
+{
+public:
+    volatile static char USART_DATA_BUFFER[32];
+    volatile static uint8_t USART_DATA_INDEX;
+    volatile static bool USART_BUFFER_READY;
 
-/*
-    Function name: USART_sendByte
-    Input:  uint8_t data: the data to be sent
-    Output: none
-    Logic: Send 1 byte of data to the serial monitor
-    Example call: USART_sendByte('A');
-*/
-void USART_sendByte(uint8_t data) {
-    while (!(UCSR0A & (1 << UDRE0)));
-    UDR0 = data;
-}
-
-/*
-    Function name: USART_sendData
-    Input:  char* data: the data (string) to be sent
-    Output: none
-    Logic: Send a string to the serial monitor
-    Example call: USART_sendData("Hello world!\n");
-*/
-void USART_sendData(const char* data) {
-    while(*data) {
-        USART_sendByte(*data);
-        data++;
+    /*
+        Input: none
+        Output: none
+        Logic: Initialize serial communication
+    */
+    static void init(int baud)
+    {
+        int baudRate = 1000000l / baud - 1;
+        UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);               //asynchronous, 8 bit data
+        UBRR0 = baudRate;                                     //set baud rate
+        UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); //enable RX and TX
     }
-}
 
-/*
-    Function name: USART_sendData
-    Input:  float data: the data to be sent
-    Output: none
-    Logic: Send a float to the serial monitor
-    Example call: USART_sendData(10.0);
-*/
-void USART_sendData(float data) {
-    char temp[10];
-    dtostrf(data, 8, 2, temp);
-    USART_sendData(temp);
-}
-
-/*
-    Function name: USART_sendData
-    Input:  uint16_t data: the data to be sent
-    Output: none
-    Logic: Send a uint16_t to the serial monitor
-    Example call: USART_sendData((uint16_t)10));
-*/
-void USART_sendData(uint16_t data) {
-    char temp[10];
-    sprintf(temp, "%d", data);
-    USART_sendData(temp);
-}
-
-/*
-    Function name: USART_getByte
-    Input:  uint8_t* data : pointer to store received byte
-    Output: bool : true if a byte was received and put in data
-    Logic: By checking the UCSR0A.RXC0 flag availability of data in UDR0 is known,
-            if data is available, it is stored and true is returned
-    Example call: 
-    uint8_t data;
-    if (USART_getByte(&data)) {
-        //do something with data
-    } 
-*/
-bool USART_getByte(uint8_t *data) {
-    if (UCSR0A & (1 << RXC0)) {
-        *data = UDR0;
-        return true;
+    /*
+        Input:  uint8_t data: the data to be sent
+        Output: none
+        Logic: Send 1 byte of data to the serial monitor
+    */
+    static void sendByte(uint8_t data)
+    {
+        while (!(UCSR0A & (1 << UDRE0)))
+            ;
+        UDR0 = data;
     }
-    return false;
-}
 
-/*
-    Function name: USART_readBuffer 
-    Input:  char *dest: memory to be filled with received data (capacity 32 bytes)
-    Output: none 
-    Logic:  read the received data that is stored in the buffer
-    Example call: 
-    char data[32];
-    if (USART_BUFFER_READY) USART_readBuffer(data);
- */
-void USART_readBuffer(char *dest) {
-    strcpy(dest, USART_DATA_BUFFER);
-    USART_DATA_INDEX = 0;
-    USART_BUFFER_READY = false;
-}
+    /*
+        Input:  char* data: the data (string) to be sent
+        Output: none
+        Logic: Send a string to the serial monitor
+    */
+    static void sendData(const char *data)
+    {
+        while (*data)
+        {
+            sendByte(*data);
+            data++;
+        }
+    }
 
-/*
-    Function name: ISR(USART_RX_vect)
-    Logic: Whenever data is available it is appended to the buffer if the buffer has already been read 
- */
-ISR(USART_RX_vect) {
-    if (USART_BUFFER_READY == false) {
-        char data = UDR0;
-        if (data == '\n' || data == '\r' || USART_DATA_INDEX == 31) 
+    /*
+        Input:  uint8_t* data : pointer to store received byte
+        Output: bool : true if a byte was received and put in data
+        Logic: By checking the UCSR0A.RXC0 flag availability of data in UDR0 is known,
+                if data is available, it is stored and true is returned
+        Example call: 
+        uint8_t data;
+        if (USART::getByte(&data)) {
+            //do something with data
+        } 
+    */
+    static bool getByte(uint8_t *data)
+    {
+        if (UCSR0A & (1 << RXC0))
+        {
+            *data = UDR0;
+            return true;
+        }
+        return false;
+    }
+
+    /*
+        Input:  char *dest: memory to be filled with received data (capacity 32 bytes)
+        Output: none 
+        Logic:  read the received data that is stored in the buffer
+        Example call: 
+        char data[32];
+        if (USART::bufferReady()) USART::readBuffer(data);
+    */
+    static void readBuffer(char *dest)
+    {
+        strcpy(dest, USART_DATA_BUFFER);
+        USART_DATA_INDEX = 0;
+        USART_BUFFER_READY = false;
+    }
+
+    static bool bufferReady()
+    {
+        return USART_BUFFER_READY;
+    }
+
+    static void updateBuffer(char data)
+    {
+        if (data == '\n' || data == '\r' || USART_DATA_INDEX == 31)
         {
             data = '\0';
             USART_BUFFER_READY = true;
@@ -131,10 +109,39 @@ ISR(USART_RX_vect) {
         USART_DATA_BUFFER[USART_DATA_INDEX] = data;
         USART_DATA_INDEX++;
     }
+};
+
+volatile static char USART::USART_DATA_BUFFER[32] = "";
+volatile static uint8_t USART::USART_DATA_INDEX = 0;
+volatile static bool USART::USART_BUFFER_READY = false;
+
+/*
+    Function name: ISR(USART_RX_vect)
+    Logic: Whenever data is available it is appended to the buffer if the buffer has already been read 
+ */
+ISR(USART_RX_vect)
+{
+    if (USART::bufferReady() == false)
+    {
+        char data = UDR0;
+        USART::updateBuffer(data);
+    }
 }
 
-
-int main() {
+int main()
+{
     sei(); //Enable global interrupts
+    USART::init(9600);
+    char data[35];
+
+    while (1)
+    {
+        //USART::sendData("Shyam\n");
+        if (USART::bufferReady()) {
+            USART::readBuffer(data);
+            USART::sendData(data);
+            USART::sendByte('\n');
+        }
+    }
     return 0;
 }
