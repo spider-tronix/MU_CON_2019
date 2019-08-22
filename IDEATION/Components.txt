@@ -1,6 +1,6 @@
 REQUIRED COMPONENTS:
-	1)Arduino nano
-	2)servo
+	1)Arduino nano 
+	2)servo 3nos
 	3)HC-05
 	4)wire cutter
 	5)Spokes
