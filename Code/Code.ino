@@ -1,26 +1,29 @@
 /*
     Filename: Code.ino
     Author: The real Spider Tronix 2019
-    Purpose: First years'  workshop (2019)
+    Purpose: First years' uCON  workshop (2019)
  */
 
 //REQUIRED HEADERS
 #include <avr/interrupt.h>
 #include <avr/io.h>
+
 #define OCR1_2ms 3999
 #define OCR1_1ms 1800
 #define left_servo_bottom_angle 20
-#define left_servo_top_angle 150
+#define left_servo_top_angle 150  // Constants
 #define right_servo_bottom_angle 20
 #define right_servo_top_angle 150
 #define middle_servo_left_angle 20
 #define middle_servo_right_angle 150
+
 ////////////////
-// UART class //
+// servo class //
 ////////////////
 class servo
 {
 public:
+    // Initialize servo at given pin
     void begin(int pin)
     {
         if (pin == 9)
@@ -29,23 +32,30 @@ public:
             DDRB |= 1 << PINB1;
             TCCR1A |= (1 << WGM11) | (1 << COM1A1);
             TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
-
             ICR1 = 39999; // Set pwm period as 2ms
         }
     }
+    // Write the servo's angle
     void write(int angle, int offset = 800)
     {
-        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset);
+        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
     }
 };
 servo left_servo;
-servo right_servo;
+servo right_servo;  // Model servos as objects of type servo
 servo middle_servo;
+
 volatile int overflows = 0;
+/*
+overflows counts number of overflows of Timer2
+*/
 ISR(TIMER2_OVF_vect)
 {
     ++overflows;
 }
+/*
+Using timer 2 to cause a delay of a given time
+*/
 void delayinms(int time_)
 {
     overflows = 0;
@@ -54,14 +64,18 @@ void delayinms(int time_)
         ;
     TCCR2B = 0; // turn timer off after use
 }
+// Enable Overflow interrupt 
 void timer_init()
 {
     TIMSK2 = 1 << TOIE2;
-    sei();
 }
+////////////////
+// BOT class //
+////////////////
 class bot
 {
     public:
+    // Initialize position of legs for forward motion
     void move_forward_init()
     {
         middle_servo.write(middle_servo_right_angle);
@@ -69,6 +83,7 @@ class bot
         right_servo.write(right_servo_top_angle);
         delayinms(500);
     }
+    // Complete one full cycle of forward motion gait
     void move_forward()
     {
         middle_servo.write(middle_servo_left_angle);
@@ -80,6 +95,7 @@ class bot
         right_servo.write(right_servo_top_angle);
         delay(500);
     }
+    // Initialize position of legs for left rotation
     void turn_left_init()
     {
         middle_servo.write(middle_servo_right_angle);
@@ -87,6 +103,7 @@ class bot
         right_servo.write(right_servo_top_angle);
         delayinms(500);
     }
+    // Complete one full cycle of left rotation gait
     void turn_left()
     {
         middle_servo.write(middle_servo_left_angle);
@@ -98,6 +115,7 @@ class bot
         right_servo.write(right_servo_top_angle);
         delay(500);
     }
+    // Initialize position of legs for right rotation
     void turn_right_init()
     {
         middle_servo.write(middle_servo_left_angle);
@@ -105,6 +123,7 @@ class bot
         right_servo.write(right_servo_top_angle);
         delayinms(500);
     }
+    // Complete one full cycle of right rotation gait
     void turn_right()
     {
         middle_servo.write(middle_servo_right_angle);
@@ -117,6 +136,9 @@ class bot
         delay(500);
     }
 };
+////////////////
+// UART class //
+////////////////
 class USART
 {
 public:
@@ -162,7 +184,6 @@ public:
             data++;
         }
     }
-
     /*
         Input:  uint8_t* data : pointer to store received byte
         Output: bool : true if a byte was received and put in data
@@ -248,23 +269,6 @@ int main()
             USART::sendData(data);
             USART::sendByte('\n');
         }
-    }
-    return 0;
-}
-int main()
-{
-    D9servo.begin(9);
-    
-    while (1)
-    {
-        serial.print("0 start\n");
-        D9servo.write(0);
-        serial.print("0 end\n");
-        delayinms(2000);
-        serial.print("180 start\n");
-        D9servo.write(180);
-        serial.print("180 end\n");
-        delayinms(2000);
     }
     return 0;
 }
