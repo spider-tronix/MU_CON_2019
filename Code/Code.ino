@@ -7,11 +7,116 @@
 //REQUIRED HEADERS
 #include <avr/interrupt.h>
 #include <avr/io.h>
-
+#define OCR1_2ms 3999
+#define OCR1_1ms 1800
+#define left_servo_bottom_angle 20
+#define left_servo_top_angle 150
+#define right_servo_bottom_angle 20
+#define right_servo_top_angle 150
+#define middle_servo_left_angle 20
+#define middle_servo_right_angle 150
 ////////////////
 // UART class //
 ////////////////
+class servo
+{
+public:
+    void begin(int pin)
+    {
+        if (pin == 9)
+        {
+            /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
+            DDRB |= 1 << PINB1;
+            TCCR1A |= (1 << WGM11) | (1 << COM1A1);
+            TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
 
+            ICR1 = 39999; // Set pwm period as 2ms
+        }
+    }
+    void write(int angle, int offset = 800)
+    {
+        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset);
+    }
+};
+servo left_servo;
+servo right_servo;
+servo middle_servo;
+volatile int overflows = 0;
+ISR(TIMER2_OVF_vect)
+{
+    ++overflows;
+}
+void delayinms(int time_)
+{
+    overflows = 0;
+    TCCR2B = 1 << CS21 | 1 << CS20;    //32 bit prescale gives 0.512ms per overflow
+    while (overflows * 0.512 <= time_) // wait till count of overflows equals time_
+        ;
+    TCCR2B = 0; // turn timer off after use
+}
+void timer_init()
+{
+    TIMSK2 = 1 << TOIE2;
+    sei();
+}
+class bot
+{
+    public:
+    void move_forward_init()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    void move_forward()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+    void turn_left_init()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    void turn_left()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+    void turn_right_init()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    void turn_right()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+};
 class USART
 {
 public:
@@ -130,14 +235,15 @@ ISR(USART_RX_vect)
 
 int main()
 {
+    timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
     char data[35];
-
     while (1)
     {
         //USART::sendData("Shyam\n");
-        if (USART::bufferReady()) {
+        if (USART::bufferReady())
+        {
             USART::readBuffer(data);
             USART::sendData(data);
             USART::sendByte('\n');
@@ -145,84 +251,10 @@ int main()
     }
     return 0;
 }
-
-#include <avr/io.h>
-
-#define OCR1_2ms 3999
-#define OCR1_1ms 1800
-#define left_servo_bottom_angle 20
-#define left_servo_top_angle 150
-#define right_servo_bottom_angle 20
-#define right_servo_top_angle 150
-#define middle_servo_left_angle 20
-#define middle_servo_right_angle 150
-class servo
-{
-public:
-    void begin(int pin)
-    {
-        if (pin == 9)
-        {
-            /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
-            DDRB |= 1 << PINB1;
-            TCCR1A |= (1 << WGM11) | (1 << COM1A1);
-            TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
-
-            ICR1 = 39999; // Set pwm period as 2ms
-        }
-    }
-    void write(int angle, int offset = 800)
-    {
-        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset);
-    }
-};
-
-
-servo left_servo;
-servo right_servo;
-servo middle_servo;
-usart serial;
-volatile int overflows = 0;
-ISR(TIMER2_OVF_vect)
-{
-    ++overflows;
-}
-void delayinms(int time_)
-{
-    overflows = 0;
-    TCCR2B = 1 << CS21 | 1 << CS20;    //32 bit prescale gives 0.512ms per overflow
-    while (overflows * 0.512 <= time_) // wait till count of overflows equals time_
-        ;
-    TCCR2B = 0; // turn timer off after use
-}
-void timer_init()
-{
-    TIMSK2 = 1 << TOIE2;
-    sei();
-}
-void move_forward_init()
-{
-  middle_servo.write(middle_servo_right_angle);
-  left_servo.write(left_servo_bottom_angle);
-  right_servo.write(right_servo_top_angle);
-  delayinms(500);
-}
-void move_forward()
-{
-    middle_servo.write(middle_servo_left_angle);
-    left_servo.write(left_servo_top_angle);
-    right_servo.write(right_servo_bottom_angle);
-    delay(500);
-    middle_servo.write(middle_servo_right_angle);
-    left_servo.write(left_servo_bottom_angle);
-    right_servo.write(right_servo_top_angle);
-    delay(500);
-}
 int main()
 {
     D9servo.begin(9);
-    serial.init();
-    timer_init();
+    
     while (1)
     {
         serial.print("0 start\n");
