@@ -150,6 +150,7 @@ public:
             {
                 turn_left_init();
                 turn_left();
+                
                 break;
             }
             case 'r':
