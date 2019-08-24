@@ -10,6 +10,8 @@
 
 #define OCR1_2ms 3999
 #define OCR1_1ms 1800
+#define OCR0B_1ms 62
+#define OCR0B_2ms 125
 #define left_servo_bottom_angle 20
 #define left_servo_top_angle 150 // Constants
 #define right_servo_bottom_angle 20
@@ -22,10 +24,11 @@
 ////////////////
 class servo
 {
+ int pin;
 public:
     // Initialize servo at given pin
-    void begin(int pin)
-    {
+    void begin(int select_pin)
+    { pin= select_pin;
         if (pin == 9)
         {
             /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
@@ -34,12 +37,23 @@ public:
             TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
             ICR1 = 39999; // Set pwm period as 2ms
         }
+        if (pin == 6)
+        {
+          // Timer0 in fast pwm (TOP Value as OCR0A) , non-inverting mode, 256-bit prescaling
+            TCCR0A |= (1 << WGM00) |(1<< WGM01)| (1 << COM0A1); 
+            TCCR0B |= (1 << WGM02)| (1 << CS02); 
+            OCR0A = 125;
+        }
     }
     // Write the servo's angle
-    void write(int angle, int offset = 800)
-    {
-        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
-    }
+   void write(int angle, int offset = 800)
+     {   if(pin ==9)
+            OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
+         if(pin == 6)
+            OCR0B = map(angle,0, 180); //Map angle to OCR0B value
+         if( pin == 10)
+           OCR1B= map (angle, 0. 180); // Map angle to OCR1B  
+      }
 };
 servo left_servo;
 servo right_servo; // Model servos as objects of type servo
