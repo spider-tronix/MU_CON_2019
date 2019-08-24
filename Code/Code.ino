@@ -1,17 +1,176 @@
 /*
     Filename: Code.ino
     Author: The real Spider Tronix 2019
-    Purpose: First years'  workshop (2019)
+    Purpose: First years' uCON  workshop (2019)
  */
 
 //REQUIRED HEADERS
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
+#define OCR1_2ms 3999
+#define OCR1_1ms 1800
+#define left_servo_bottom_angle 20
+#define left_servo_top_angle 150 // Constants
+#define right_servo_bottom_angle 20
+#define right_servo_top_angle 150
+#define middle_servo_left_angle 20
+#define middle_servo_right_angle 150
+
+////////////////
+// servo class //
+////////////////
+class servo
+{
+public:
+    // Initialize servo at given pin
+    void begin(int pin)
+    {
+        if (pin == 9)
+        {
+            /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
+            DDRB |= 1 << PINB1;
+            TCCR1A |= (1 << WGM11) | (1 << COM1A1);
+            TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
+            ICR1 = 39999; // Set pwm period as 2ms
+        }
+    }
+    // Write the servo's angle
+    void write(int angle, int offset = 800)
+    {
+        OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
+    }
+};
+servo left_servo;
+servo right_servo; // Model servos as objects of type servo
+servo middle_servo;
+
+volatile int overflows = 0;
+/*
+overflows counts number of overflows of Timer2
+*/
+ISR(TIMER2_OVF_vect)
+{
+    ++overflows;
+}
+/*
+Using timer 2 to cause a delay of a given time
+*/
+void delayinms(int time_)
+{
+    overflows = 0;
+    middle_servo_right_angle
+        TCCR2B = 1 << CS21 | 1 << CS20; //32 bit prescale gives 0.512ms per overflow
+    while (overflows * 0.512 <= time_)  // wait till count of overflows equals time_
+        ;
+    TCCR2B = 0; // turn timer off after use
+}
+
+// Enable Overflow interrupt
+void timer_init()
+{
+    TIMSK2 = 1 << TOIE2;
+}
+////////////////
+// BOT class //
+////////////////
+class bot
+{
+
+    // Initialize position of legs for forward motion
+    void move_forward_init()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    // Complete one full cycle of forward motion gait
+    void move_forward()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+    // Initialize position of legs for left rotation
+    void turn_left_init()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    // Complete one full cycle of left rotation gait
+    void turn_left()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+    // Initialize position of legs for right rotation
+    void turn_right_init()
+    {
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delayinms(500);
+    }
+    // Complete one full cycle of right rotation gait
+    void turn_right()
+    {
+        middle_servo.write(middle_servo_right_angle);
+        left_servo.write(left_servo_bottom_angle);
+        right_servo.write(right_servo_bottom_angle);
+        delay(500);
+        middle_servo.write(middle_servo_left_angle);
+        left_servo.write(left_servo_top_angle);
+        right_servo.write(right_servo_top_angle);
+        delay(500);
+    }
+    public:
+    void move(char command)
+    {
+        switch (command)
+        {
+            case 'f':
+            {
+            move_forward_init();
+            move_forward();
+            break;
+             }
+            case 'l':
+            {
+            turn_left_init();
+            turn_left();
+
+            break;
+        }
+        case 'r':
+        {
+            move_forward_init();
+            move_forward();
+            break;
+        }
+        default:
+        {
+            ;
+        }
+        }
+    }
+};
 ////////////////
 // UART class //
 ////////////////
-
 class USART
 {
 public:
@@ -57,7 +216,6 @@ public:
             data++;
         }
     }
-
     /*
         Input:  uint8_t* data : pointer to store received byte
         Output: bool : true if a byte was received and put in data
@@ -130,14 +288,15 @@ ISR(USART_RX_vect)
 
 int main()
 {
+    timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
     char data[35];
-
     while (1)
     {
         //USART::sendData("Shyam\n");
-        if (USART::bufferReady()) {
+        if (USART::bufferReady())
+        {
             USART::readBuffer(data);
             USART::sendData(data);
             USART::sendByte('\n');
