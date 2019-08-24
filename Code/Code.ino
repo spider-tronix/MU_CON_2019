@@ -65,6 +65,7 @@ void delayinms(int time_)
         ;
     TCCR2B = 0; // turn timer off after use
 }
+
 // Enable Overflow interrupt
 void timer_init()
 {
@@ -75,7 +76,7 @@ void timer_init()
 ////////////////
 class bot
 {
-public:
+
     // Initialize position of legs for forward motion
     void move_forward_init()
     {
@@ -136,33 +137,34 @@ public:
         right_servo.write(right_servo_top_angle);
         delay(500);
     }
+    public:
     void move(char command)
     {
         switch (command)
         {
             case 'f':
             {
-                move_forward_init();
-                move_forward();
-                break;
-            }
+            move_forward_init();
+            move_forward();
+            break;
+             }
             case 'l':
             {
-                turn_left_init();
-                turn_left();
-                
-                break;
-            }
-            case 'r':
-            {
-                move_forward_init();
-                move_forward();
-                break;
-            }
-            default:
-            {
-                ;
-            }
+            turn_left_init();
+            turn_left();
+
+            break;
+        }
+        case 'r':
+        {
+            move_forward_init();
+            move_forward();
+            break;
+        }
+        default:
+        {
+            ;
+        }
         }
     }
 };
