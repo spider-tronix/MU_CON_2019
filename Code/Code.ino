@@ -11,7 +11,7 @@
 #define OCR1_2ms 3999
 #define OCR1_1ms 1800
 #define left_servo_bottom_angle 20
-#define left_servo_top_angle 150  // Constants
+#define left_servo_top_angle 150 // Constants
 #define right_servo_bottom_angle 20
 #define right_servo_top_angle 150
 #define middle_servo_left_angle 20
@@ -42,7 +42,7 @@ public:
     }
 };
 servo left_servo;
-servo right_servo;  // Model servos as objects of type servo
+servo right_servo; // Model servos as objects of type servo
 servo middle_servo;
 
 volatile int overflows = 0;
@@ -59,12 +59,13 @@ Using timer 2 to cause a delay of a given time
 void delayinms(int time_)
 {
     overflows = 0;
-    TCCR2B = 1 << CS21 | 1 << CS20;    //32 bit prescale gives 0.512ms per overflow
-    while (overflows * 0.512 <= time_) // wait till count of overflows equals time_
+    middle_servo_right_angle
+        TCCR2B = 1 << CS21 | 1 << CS20; //32 bit prescale gives 0.512ms per overflow
+    while (overflows * 0.512 <= time_)  // wait till count of overflows equals time_
         ;
     TCCR2B = 0; // turn timer off after use
 }
-// Enable Overflow interrupt 
+// Enable Overflow interrupt
 void timer_init()
 {
     TIMSK2 = 1 << TOIE2;
@@ -74,7 +75,7 @@ void timer_init()
 ////////////////
 class bot
 {
-    public:
+public:
     // Initialize position of legs for forward motion
     void move_forward_init()
     {
@@ -134,6 +135,34 @@ class bot
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_top_angle);
         delay(500);
+    }
+    void move(char command)
+    {
+        switch (command)
+        {
+            case 'f':
+            {
+                move_forward_init();
+                move_forward();
+                break;
+            }
+            case 'l':
+            {
+                turn_left_init();
+                turn_left();
+                break;
+            }
+            case 'r':
+            {
+                move_forward_init();
+                move_forward();
+                break;
+            }
+            default:
+            {
+                ;
+            }
+        }
     }
 };
 ////////////////
