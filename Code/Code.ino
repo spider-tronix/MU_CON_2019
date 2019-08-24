@@ -59,9 +59,9 @@ public:
      {   if(pin ==9)
             OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
          if(pin == 6)
-            OCR0B = map(angle,0, 180); //Map angle to OCR0B value
+            OCR0B = map(angle,0, 180,OCR0B_1ms,OCR0B_2ms); //Map angle to OCR0B value
          if( pin == 10)
-           OCR1B= map (angle, 0. 180); // Map angle to OCR1B  
+           OCR1B= map (angle, 0, 180,OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1B  
       }
 };
 servo left_servo;
@@ -82,7 +82,7 @@ Using timer 2 to cause a delay of a given time
 void delayinms(int time_)
 {
     overflows = 0;
-    middle_servo_right_angle
+    
         TCCR2B = 1 << CS21 | 1 << CS20; //32 bit prescale gives 0.512ms per overflow
     while (overflows * 0.512 <= time_)  // wait till count of overflows equals time_
         ;
@@ -310,20 +310,18 @@ ISR(USART_RX_vect)
 }
 
 int main()
-{
+{ 
     timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
-    char data[35];
-    while (1)
-    {
-        //USART::sendData("Shyam\n");
-        if (USART::bufferReady())
-        {
-            USART::readBuffer(data);
-            USART::sendData(data);
-            USART::sendByte('\n');
-        }
-    }
+   left_servo.begin (9);
+   delayinms(200);
+   while(1)
+   {
+   left_servo.write(150);
+   delayinms(1000);
+   left_servo.write(0);
+   delayinms(1000);
+   }
     return 0;
 }
