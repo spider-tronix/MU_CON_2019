@@ -35,12 +35,13 @@ public:
             DDRB |= 1 << PINB1;
             TCCR1A |= (1 << WGM11) | (1 << COM1A1);
             TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
-            ICR1 = 39999; // Set pwm period as 2ms
+            ICR1 = 39999; // Set pwm period as 20ms
         }
         if (pin == 6)
         {
           // Timer0 in fast pwm (TOP Value as OCR0A) , non-inverting mode, 256-bit prescaling
-            TCCR0A |= (1 << WGM00) |(1<< WGM01)| (1 << COM0A1); 
+            DDRD |= 1<< 5;
+            TCCR0A |= (1 << WGM00) |(1<< WGM01)| (1 << COM0B1); 
             TCCR0B |= (1 << WGM02)| (1 << CS02); 
             OCR0A = 125;
         }
@@ -50,7 +51,7 @@ public:
             DDRB |= 1 << PINB2;
             TCCR1A |= (1 << WGM11) | (1 << COM1B1);
             TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
-            ICR1 = 39999; // Set pwm period as 2ms
+            ICR1 = 39999; // Set pwm period as 20ms
         }
         
     }
@@ -314,7 +315,7 @@ int main()
     timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
-   left_servo.begin (9);
+   left_servo.begin (6);
    delayinms(200);
    while(1)
    {
