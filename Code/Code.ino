@@ -44,6 +44,15 @@ public:
             TCCR0B |= (1 << WGM02)| (1 << CS02); 
             OCR0A = 125;
         }
+        if (pin == 10)
+        {
+            /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
+            DDRB |= 1 << PINB2;
+            TCCR1A |= (1 << WGM11) | (1 << COM1B1);
+            TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
+            ICR1 = 39999; // Set pwm period as 2ms
+        }
+        
     }
     // Write the servo's angle
    void write(int angle, int offset = 800)
