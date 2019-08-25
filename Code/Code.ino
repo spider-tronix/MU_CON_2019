@@ -10,8 +10,6 @@
 
 #define OCR1_2ms 3999
 #define OCR1_1ms 1800
-#define OCR0B_1ms 62
-#define OCR0B_2ms 125
 #define left_servo_bottom_angle 20
 #define left_servo_top_angle 150 // Constants
 #define right_servo_bottom_angle 20
@@ -19,7 +17,8 @@
 #define middle_servo_left_angle 20
 #define middle_servo_right_angle 150
 
-
+volatile float time0 = 0;
+float duty_time;
 ////////////////
 // UART class //
 ////////////////
@@ -137,17 +136,31 @@ ISR(USART_RX_vect)
         USART::updateBuffer(data);
     }
 }
-
+ISR(TIMER0_OVF_vect)
+{
+    time0 += 0.128;
+    if (time0 >= 20)
+    {
+        PORTD |= 1 << 6;
+        time0 = 0;
+    }
+    else if (time0 >= duty_time)
+    {
+        PORTD = 0;
+    }
+}
 ////////////////
 // servo class //
 ////////////////
 class servo
 {
- int pin;
+    int pin;
+
 public:
     // Initialize servo at given pin
     void begin(int select_pin)
-    { pin= select_pin;
+    {
+        pin = select_pin;
         if (pin == 9)
         {
             /*Set pre-scaler of 8 with Fast PWM (Mode 14 i.e TOP value as ICR1)  non-inverting mode */
@@ -158,14 +171,7 @@ public:
         }
         if (pin == 6)
         {
-            // Timer0 : CTC (OCR0A)
-            DDRD |= 1<< 6;
-            TCCR0A |= (1<< WGM01);  //ctc
-            TCCR0B |=  (1 << CS02); // 256 prescalar 
-            OCR0A = 125;
-            OCR0B = 0;
-            //enable interrupts 
-            TIMSK0 = (1 << 2) | (1 << 1);
+            DDRD |= 1 << 6;
         }
         if (pin == 10)
         {
@@ -175,17 +181,20 @@ public:
             TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);
             ICR1 = 39999; // Set pwm period as 20ms
         }
-        
     }
     // Write the servo's angle
-   void write(int angle, int offset = 800)
-     {   if(pin ==9)
-            OCR1A = map(angle, 0, 180, OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1 value
-         if(pin == 6)
-            OCR0B = map(angle,0, 180,OCR0B_1ms,OCR0B_2ms); //Map angle to OCR0B value
-         if( pin == 10)
-           OCR1B= map (angle, 0, 180,OCR1_1ms - offset, OCR1_2ms + offset); // Map angle to OCR1B  
-      }
+    void write(int angle)
+    {
+        if (pin == 9)
+            OCR1A = map(angle, 0, 180, OCR1_1ms, OCR1_2ms); // Map angle to OCR1 value
+        if (pin == 6)
+        {
+            duty_time = map(angle, 0, 180, 1, 2);
+            TCCR0B = 1 << CS01;
+        }
+        if (pin == 10)
+            OCR1B = map(angle, 0, 180, OCR1_1ms, OCR1_2ms); // Map angle to OCR1B
+    }
 };
 servo left_servo;
 servo right_servo; // Model servos as objects of type servo
@@ -195,18 +204,22 @@ servo middle_servo;
  * timer0 compare match a
  */
 volatile int timer0_counter = 0;
-ISR (TIMER0_COMPA_vect) {
-  timer0_counter ++;
-  if (timer0_counter == 10) {
-    PORTD |= (1 << 6);
-    timer0_counter = 0;
-  }
+ISR(TIMER0_COMPA_vect)
+{
+    timer0_counter++;
+    if (timer0_counter == 10)
+    {
+        PORTD |= (1 << 6);
+        timer0_counter = 0;
+    }
 }
 
-ISR (TIMER0_COMPB_vect) {
-  if (timer0_counter == 0) {
-    PORTD &= !(1 << 6);
-  }
+ISR(TIMER0_COMPB_vect)
+{
+    if (timer0_counter == 0)
+    {
+        PORTD &= !(1 << 6);
+    }
 }
 
 /*
@@ -223,9 +236,9 @@ Using timer 2 to cause a delay of a given time
 void delayinms(int time_)
 {
     overflows = 0;
-    
-        TCCR2B = 1 << CS21 | 1 << CS20; //32 bit prescale gives 0.512ms per overflow
-    while (overflows * 0.512 <= time_)  // wait till count of overflows equals time_
+
+    TCCR2B = 1 << CS21 | 1 << CS20;    //32 bit prescale gives 0.512ms per overflow
+    while (overflows * 0.512 <= time_) // wait till count of overflows equals time_
         ;
     TCCR2B = 0; // turn timer off after use
 }
@@ -234,6 +247,7 @@ void delayinms(int time_)
 void timer_init()
 {
     TIMSK2 = 1 << TOIE2;
+    TIMSK0 = 1 << TOIE0;
 }
 ////////////////
 // BOT class //
@@ -301,19 +315,20 @@ class bot
         right_servo.write(right_servo_top_angle);
         delay(500);
     }
-    public:
+
+public:
     void move(char command)
     {
         switch (command)
         {
-            case 'f':
-            {
+        case 'f':
+        {
             move_forward_init();
             move_forward();
             break;
-             }
-            case 'l':
-            {
+        }
+        case 'l':
+        {
             turn_left_init();
             turn_left();
 
@@ -334,18 +349,18 @@ class bot
 };
 
 int main()
-{ 
+{
     timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
-   left_servo.begin (6);
-   delayinms(200);
-   while(1)
-   {
-   left_servo.write(150);
-   delayinms(1000);
-   left_servo.write(0);
-   delayinms(1000);
-   }
+    left_servo.begin(6);
+    delayinms(200);
+    while (1)
+    {
+        left_servo.write(150);
+        delayinms(1000);
+        left_servo.write(0);
+        delayinms(1000);
+    }
     return 0;
 }
