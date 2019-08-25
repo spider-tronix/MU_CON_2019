@@ -183,13 +183,13 @@ public:
         }
     }
     // Write the servo's angle
-    void write(int angle)
+    void write(float angle)
     {
         if (pin == 9)
             OCR1A = map(angle, 0, 180, OCR1_1ms, OCR1_2ms); // Map angle to OCR1 value
         if (pin == 6)
         {
-            duty_time = map(angle, 0, 180, 1, 2);
+            duty_time = 1 + (float)(angle/180);
             TCCR0B = 1 << CS01; //8 bit prescale gives 0.128ms per overflow
         }
         if (pin == 10)
