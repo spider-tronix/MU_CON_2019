@@ -18,7 +18,7 @@
 #define middle_servo_right_angle 150
 
 volatile float time0 = 0;
-float duty_time;
+float duty_time; ///(min - 1ms, max -2ms)
 ////////////////
 // UART class //
 ////////////////
@@ -138,15 +138,15 @@ ISR(USART_RX_vect)
 }
 ISR(TIMER0_OVF_vect)
 {
-    time0 += 0.128;
+    time0 += 0.128; // Calculate time (min - 0ms, max - 2ms)
     if (time0 >= 20)
     {
-        PORTD |= 1 << 6;
+        PORTD |= 1 << 6; // At 20 ms reset time0 to 0 and pull the pin back high
         time0 = 0;
     }
     else if (time0 >= duty_time)
     {
-        PORTD = 0;
+        PORTD = 0; // At time0 = duty_time make pin low for getting desired duty cycle
     }
 }
 ////////////////
@@ -190,7 +190,7 @@ public:
         if (pin == 6)
         {
             duty_time = map(angle, 0, 180, 1, 2);
-            TCCR0B = 1 << CS01;
+            TCCR0B = 1 << CS01; //8 bit prescale gives 0.128ms per overflow
         }
         if (pin == 10)
             OCR1B = map(angle, 0, 180, OCR1_1ms, OCR1_2ms); // Map angle to OCR1B
