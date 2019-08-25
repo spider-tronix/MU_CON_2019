@@ -204,23 +204,7 @@ servo middle_servo;
  * timer0 compare match a
  */
 volatile int timer0_counter = 0;
-ISR(TIMER0_COMPA_vect)
-{
-    timer0_counter++;
-    if (timer0_counter == 10)
-    {
-        PORTD |= (1 << 6);
-        timer0_counter = 0;
-    }
-}
 
-ISR(TIMER0_COMPB_vect)
-{
-    if (timer0_counter == 0)
-    {
-        PORTD &= !(1 << 6);
-    }
-}
 
 /*
 overflows counts number of overflows of Timer2
@@ -254,7 +238,7 @@ void timer_init()
 ////////////////
 class bot
 {
-
+public:
     // Initialize position of legs for forward motion
     void move_forward_init()
     {
@@ -269,11 +253,11 @@ class bot
         middle_servo.write(middle_servo_left_angle);
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_bottom_angle);
-        delay(500);
+        delayinms(500);
         middle_servo.write(middle_servo_right_angle);
         left_servo.write(left_servo_bottom_angle);
         right_servo.write(right_servo_top_angle);
-        delay(500);
+        delayinms(500);
     }
     // Initialize position of legs for left rotation
     void turn_left_init()
@@ -289,11 +273,11 @@ class bot
         middle_servo.write(middle_servo_left_angle);
         left_servo.write(left_servo_bottom_angle);
         right_servo.write(right_servo_bottom_angle);
-        delay(500);
+        delayinms(500);
         middle_servo.write(middle_servo_right_angle);
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_top_angle);
-        delay(500);
+        delayinms(500);
     }
     // Initialize position of legs for right rotation
     void turn_right_init()
@@ -309,11 +293,11 @@ class bot
         middle_servo.write(middle_servo_right_angle);
         left_servo.write(left_servo_bottom_angle);
         right_servo.write(right_servo_bottom_angle);
-        delay(500);
+        delayinms(500);
         middle_servo.write(middle_servo_left_angle);
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_top_angle);
-        delay(500);
+        delayinms(500);
     }
 
 public:
@@ -354,9 +338,13 @@ int main()
     sei(); //Enable global interrupts
     USART::init(9600);
     left_servo.begin(6);
+
+    bot spider_bot;
+    spider_bot.move_forward_init();
     delayinms(200);
     while (1)
-    {
+    {   
+        spider_bot.move_forward();
         left_servo.write(150);
         delayinms(1000);
         left_servo.write(0);
