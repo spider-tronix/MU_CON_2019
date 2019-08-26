@@ -308,6 +308,10 @@ public:
         delayinms(500);
     }
 
+    /*
+        Use: Initialize movement in a particular direction 
+        Note: To be called only once when there is a change in the direction of movement
+     */
     void move_init(int direction)
     {
         switch (direction)
@@ -324,6 +328,9 @@ public:
         }
     }
 
+    /*
+        Use: To be looped infinitely to move the bot
+     */
     void move(int direction)
     {
         switch (direction)
@@ -359,7 +366,9 @@ int main()
     {
         if (USART::bufferReady())
         {
-            direction = USART::getByte();
+            char temp[2];
+            USART::readBuffer(temp); //the buffer is expected to receive '0', '1', '2', '3', etc..
+            direction = temp[0] - '0';  //Convert ASCII to absolute value 
             spider_bot.move_init(direction);
         }
         spider_bot.move(direction);
