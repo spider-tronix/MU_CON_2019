@@ -10,12 +10,12 @@
 
 #define OCR1_2ms 3999
 #define OCR1_1ms 1800
-#define left_servo_bottom_angle 20
-#define left_servo_top_angle 150 // Constants
-#define right_servo_bottom_angle 20
-#define right_servo_top_angle 150
-#define middle_servo_left_angle 20
-#define middle_servo_right_angle 150
+#define left_servo_bottom_angle 10
+#define left_servo_top_angle 80 // Constants
+#define right_servo_bottom_angle 70
+#define right_servo_top_angle 10
+#define middle_servo_left_angle 0
+#define middle_servo_right_angle 30
 
 volatile float time0 = 0;
 float duty_time; ///(min - 1ms, max -2ms)
@@ -79,7 +79,7 @@ public:
         } 
     */
     static bool getByte(uint8_t *data)
-    {
+    {How can we loop the 'non-init' part of movement and loop only init part
         if (UCSR0A & (1 << RXC0))
         {
             *data = UDR0;
@@ -155,8 +155,7 @@ ISR(TIMER0_OVF_vect)
 class servo
 {
     int pin;
-
-public:
+    public:
     // Initialize servo at given pin
     void begin(int select_pin)
     {
@@ -189,7 +188,7 @@ public:
             OCR1A = map(angle, 0, 180, OCR1_1ms, OCR1_2ms); // Map angle to OCR1 value
         if (pin == 6)
         {
-            duty_time = 1 + (float)(angle/180);
+            duty_time = 1 + (float)(angle / 180);
             TCCR0B = 1 << CS01; //8 bit prescale gives 0.128ms per overflow
         }
         if (pin == 10)
@@ -204,7 +203,6 @@ servo middle_servo;
  * timer0 compare match a
  */
 volatile int timer0_counter = 0;
-
 
 /*
 overflows counts number of overflows of Timer2
@@ -250,11 +248,14 @@ public:
     // Complete one full cycle of forward motion gait
     void move_forward()
     {
-        middle_servo.write(middle_servo_left_angle);
+        middle_servo.write(middle_servo_right_angle);
+        delayinms(1000);
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_bottom_angle);
         delayinms(500);
-        middle_servo.write(middle_servo_right_angle);
+
+        middle_servo.write(middle_servo_left_angle);
+        delayinms(1000);
         left_servo.write(left_servo_bottom_angle);
         right_servo.write(right_servo_top_angle);
         delayinms(500);
@@ -299,35 +300,32 @@ public:
         right_servo.write(right_servo_top_angle);
         delayinms(500);
     }
-
-public:
     void move(char command)
     {
         switch (command)
         {
-        case 'f':
-        {
-            move_forward_init();
-            move_forward();
-            break;
-        }
-        case 'l':
-        {
-            turn_left_init();
-            turn_left();
-
-            break;
-        }
-        case 'r':
-        {
-            move_forward_init();
-            move_forward();
-            break;
-        }
-        default:
-        {
-            ;
-        }
+            case 'f':
+            {
+                move_forward_init();
+                move_forward();
+                break;
+            }
+            case 'l':
+            {
+                turn_left_init();
+                turn_left();
+                break;
+            }
+            case 'r':
+            {
+                move_forward_init();
+                move_forward();
+                break;
+            }
+            default:
+            {
+                ;
+            }
         }
     }
 };
@@ -337,18 +335,15 @@ int main()
     timer_init();
     sei(); //Enable global interrupts
     USART::init(9600);
-    left_servo.begin(6);
-
+    left_servo.begin(9);
+    middle_servo.begin(6);
+    right_servo.begin(10);
     bot spider_bot;
     spider_bot.move_forward_init();
-    delayinms(200);
+    delayinms(1000);
     while (1)
-    {   
+    {
         spider_bot.move_forward();
-        left_servo.write(150);
-        delayinms(1000);
-        left_servo.write(0);
-        delayinms(1000);
     }
     return 0;
 }
