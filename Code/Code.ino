@@ -28,120 +28,43 @@ float duty_time; ///(min - 1ms, max -2ms)
 ////////////////
 // UART class //
 ////////////////
-class USART
+class usart
 {
 public:
-    volatile static char USART_DATA_BUFFER[32];
-    volatile static uint8_t USART_DATA_INDEX;
-    volatile static bool USART_BUFFER_READY;
-
-    /*
-        Input: none
-        Output: none
-        Logic: Initialize serial communication
-    */
-    static void init(int baud)
+    void init(unsigned long baud = 9600)
     {
-        int baudRate = 1000000l / baud - 1;
-        UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);               //asynchronous, 8 bit data
-        UBRR0 = baudRate;                                     //set baud rate
-        UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); //enable RX and TX
-    }
-
-    /*
-        Input:  uint8_t data: the data to be sent
-        Output: none
-        Logic: Send 1 byte of data to the serial monitor
-    */
-    static void sendByte(uint8_t data)
-    {
-        while (!(UCSR0A & (1 << UDRE0)))
-            ;
-        UDR0 = data;
-    }
-
-    /*
-        Input:  char* data: the data (string) to be sent
-        Output: none
-        Logic: Send a string to the serial monitor
-    */
-    static void sendData(const char *data)
-    {
-        while (*data)
+        if (baud == 9600)
         {
-            sendByte(*data);
-            data++;
+            UCSR0A = 0X00;
+            UCSR0B = (1 << RXEN0) | (1 << TXEN0);
+            UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
+            UBRR0 = 103; //Set baud rate to 9600
         }
     }
-    /*
-        Input:  uint8_t* data : pointer to store received byte
-        Output: bool : true if a byte was received and put in data
-        Logic: By checking the UCSR0A.RXC0 flag availability of data in UDR0 is known,
-                if data is available, it is stored and true is returned
-        Example call: 
-        uint8_t data;
-        if (USART::getByte(&data)) {
-            //do something with data
-        } 
-    */
-    static bool getByte(uint8_t *data)
+    void print(String data)
     {
-        if (UCSR0A & (1 << RXC0))
+        for (int i = 0; data[i] != '\0'; i++)
         {
-            *data = UDR0;
-            return true;
+            while (!(UCSR0A & (1 << UDRE0)))
+                ;
+            UDR0 = data[i];
         }
-        return false;
     }
-
-    /*
-        Input:  char *dest: memory to be filled with received data (capacity 32 bytes)
-        Output: none 
-        Logic:  read the received data that is stored in the buffer
-        Example call: 
-        char data[32];
-        if (USART::bufferReady()) USART::readBuffer(data);
-    */
-    static void readBuffer(char *dest)
+    char read()
     {
-        strcpy(dest, USART_DATA_BUFFER);
-        USART_DATA_INDEX = 0;
-        USART_BUFFER_READY = false;
-    }
-
-    static bool bufferReady()
-    {
-        return USART_BUFFER_READY;
-    }
-
-    static void updateBuffer(char data)
-    {
-        if (data == '\n' || data == '\r' || USART_DATA_INDEX == 31)
+        if ( (UCSR0A & (1 << RXC0)) )
         {
-            data = '\0';
-            USART_BUFFER_READY = true;
+          char temp=UDR0;
+          if(temp!='\n' && temp!='\r')
+            return temp;
         }
-        USART_DATA_BUFFER[USART_DATA_INDEX] = data;
-        USART_DATA_INDEX++;
+          
+        
+        return 0;
     }
 };
+usart serial;
 
-volatile static char USART::USART_DATA_BUFFER[32] = "";
-volatile static uint8_t USART::USART_DATA_INDEX = 0;
-volatile static bool USART::USART_BUFFER_READY = false;
-
-/*
-    Function name: ISR(USART_RX_vect)
-    Logic: Whenever data is available it is appended to the buffer if the buffer has already been read 
- */
-ISR(USART_RX_vect)
-{
-    if (USART::bufferReady() == false)
-    {
-        char data = UDR0;
-        USART::updateBuffer(data);
-    }
-}
 ISR(TIMER0_OVF_vect)
 {
     time0 += 0.128; // Calculate time (min - 0ms, max - 2ms)
@@ -255,14 +178,14 @@ public:
     // Complete one full cycle of forward motion gait
     void move_forward()
     {
-        middle_servo.write(middle_servo_right_angle);
-        delayinms(1000);
+        middle_servo.write(middle_servo_left_angle);
+        delayinms(200);
         left_servo.write(left_servo_top_angle);
         right_servo.write(right_servo_bottom_angle);
         delayinms(500);
 
-        middle_servo.write(middle_servo_left_angle);
-        delayinms(1000);
+        middle_servo.write(middle_servo_right_angle);
+        delayinms(200);
         left_servo.write(left_servo_bottom_angle);
         right_servo.write(right_servo_top_angle);
         delayinms(500);
@@ -352,7 +275,7 @@ int main()
 {
     timer_init();
     sei(); //Enable global interrupts
-    USART::init(9600);
+    serial.init(9600);
     left_servo.begin(9);
     middle_servo.begin(6);
     right_servo.begin(10);
@@ -364,12 +287,21 @@ int main()
 
     while (1)
     {
-        if (USART::bufferReady())
+       /* if (USART::bufferReady())
         {
             char temp[2];
             USART::readBuffer(temp); //the buffer is expected to receive '0', '1', '2', '3', etc..
             direction = temp[0] - '0';  //Convert ASCII to absolute value 
             spider_bot.move_init(direction);
+            
+        }
+        USART::sendByte(direction + '0');*/
+        char t = serial.read();
+        if(t)
+        {
+          direction = t- '0';
+          serial.print("change\n");
+          spider_bot.move_init(direction);
         }
         spider_bot.move(direction);
     }
