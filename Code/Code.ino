@@ -17,6 +17,12 @@
 #define middle_servo_left_angle 0
 #define middle_servo_right_angle 30
 
+//CONSTANS FOR BOT DIRECTIONS
+#define DIR_NONE 0
+#define DIR_FRONT 1
+#define DIR_LEFT 2
+#define DIR_RIGHT 3
+
 volatile float time0 = 0;
 float duty_time; ///(min - 1ms, max -2ms)
 ////////////////
@@ -79,7 +85,7 @@ public:
         } 
     */
     static bool getByte(uint8_t *data)
-    {How can we loop the 'non-init' part of movement and loop only init part
+    {
         if (UCSR0A & (1 << RXC0))
         {
             *data = UDR0;
@@ -155,7 +161,8 @@ ISR(TIMER0_OVF_vect)
 class servo
 {
     int pin;
-    public:
+
+public:
     // Initialize servo at given pin
     void begin(int select_pin)
     {
@@ -300,32 +307,36 @@ public:
         right_servo.write(right_servo_top_angle);
         delayinms(500);
     }
-    void move(char command)
+
+    void move_init(int direction)
     {
-        switch (command)
+        switch (direction)
         {
-            case 'f':
-            {
-                move_forward_init();
-                move_forward();
-                break;
-            }
-            case 'l':
-            {
-                turn_left_init();
-                turn_left();
-                break;
-            }
-            case 'r':
-            {
-                move_forward_init();
-                move_forward();
-                break;
-            }
-            default:
-            {
-                ;
-            }
+        case DIR_FRONT:
+            move_forward_init();
+            break;
+        case DIR_LEFT:
+            turn_left_init();
+            break;
+        case DIR_RIGHT:
+            turn_right_init();
+            break;
+        }
+    }
+
+    void move(int direction)
+    {
+        switch (direction)
+        {
+        case DIR_FRONT:
+            move_forward();
+            break;
+        case DIR_LEFT:
+            turn_left();
+            break;
+        case DIR_RIGHT:
+            turn_right();
+            break;
         }
     }
 };
@@ -341,9 +352,17 @@ int main()
     bot spider_bot;
     spider_bot.move_forward_init();
     delayinms(1000);
+
+    int direction = DIR_NONE;
+
     while (1)
     {
-        spider_bot.move_forward();
+        if (USART::bufferReady())
+        {
+            direction = USART::getByte();
+            spider_bot.move_init(direction);
+        }
+        spider_bot.move(direction);
     }
     return 0;
 }
