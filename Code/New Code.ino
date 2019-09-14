@@ -262,8 +262,7 @@ int main()
     servo_begin(LEFT_SERVO);     
     servo_begin(MIDDLE_SERVO);    
     servo_begin(RIGHT_SERVO);               
-    bot spider_bot;
-    spider_bot.move_forward_init();
+    move_forward_init();
     delayinms(1000);
 
     int direction = DIR_NONE;
@@ -284,9 +283,9 @@ int main()
         {
             direction = t - '0';
             serial_print("change\n");
-            spider_bot.move_init(direction);
+            move_init(direction);
         }
-        spider_bot.move(direction);
+        move(direction);
     }
     return 0;
 }
